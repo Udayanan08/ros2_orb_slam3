@@ -26,6 +26,15 @@
 #include <std_msgs/msg/string.hpp>
 #include <std_msgs/msg/bool.hpp>
 #include "sensor_msgs/msg/image.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "sensor_msgs/msg/imu.hpp"
+
+#include <message_filters/subscriber.h>
+#include <message_filters/synchronizer.h>
+#include <message_filters/sync_policies/approximate_time.h>
+
+#include <condition_variable>
+
 using std::placeholders::_1; //* TODO why this is suggested in official tutorial
 
 // Include Eigen
@@ -69,7 +78,7 @@ class MonocularMode : public rclcpp::Node
         
         // Class internal variables
         std::string homeDir = "";
-        std::string packagePath = "ros2_test/src/ros2_orb_slam3/"; //! Change to match path to your workspace
+        std::string packagePath = "IISC/forked_repos/orbslam_ros_ws/src/ros2_orb_slam3/"; //! Change to match path to your workspace
         std::string OPENCV_WINDOW = ""; // Set during initialization
         std::string nodeName = ""; // Name of this node
         std::string vocFilePath = ""; // Path to ORB vocabulary provided by DBoW2 package
@@ -79,13 +88,61 @@ class MonocularMode : public rclcpp::Node
         std::string subexperimentconfigName = ""; // Subscription topic name
         std::string pubconfigackName = ""; // Publisher topic name
         std::string subImgMsgName = ""; // Topic to subscribe to receive RGB images from a python node
-        std::string subTimestepMsgName = ""; // Topic to subscribe to receive the timestep related to the 
+        std::string subTimestepMsgName = ""; // Topic to subscribe to receive the timestep related to the
+        std::string subImgRMsgName = "";
+        std::string subImgLMsgName = "";
+        std::string subDptMsgName = "";
+        std::string subRGBMsgName = "";
+        std::string subImuMsgName = "";
+        std::string subImuAccMsgName = "";
+        std::string subImuGyrMsgName = "";
 
         //* Definitions of publisher and subscribers
         rclcpp::Subscription<std_msgs::msg::String>::SharedPtr expConfig_subscription_;
         rclcpp::Publisher<std_msgs::msg::String>::SharedPtr configAck_publisher_;
         rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subImgMsg_subscription_;
+        rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subImgMsg_;
         rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr subTimestepMsg_subscription_;
+
+        //stereo
+        rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subImgRMsg_;
+        rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subImgLMsg_;
+        vector<sensor_msgs::msg::Image> rimg_buff;
+        std::shared_ptr<message_filters::Subscriber<sensor_msgs::msg::Image>> img1_sub_filtered_;
+        std::shared_ptr<message_filters::Subscriber<sensor_msgs::msg::Image>> img2_sub_filtered_;
+        std::shared_ptr<message_filters::Synchronizer<message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::Image, sensor_msgs::msg::Image>>> sync_;
+        void synchronizedCallback(const sensor_msgs::msg::Image::ConstSharedPtr& imgl_msg, const sensor_msgs::msg::Image::ConstSharedPtr& imgr_msg);
+        void synchronizedDepthCallback(const sensor_msgs::msg::Image::ConstSharedPtr& imgrgb_msg, const sensor_msgs::msg::Image::ConstSharedPtr& imgdpt_msg);
+
+
+        //RGBD
+        rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subDptMsg_;
+        rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subRGBMsg_;
+        vector<sensor_msgs::msg::Image> rgb_buff;
+
+        //IMU
+        rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr subImuAccelMsg_;
+        rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr subImuGyroMsg_;
+        std::shared_ptr<message_filters::Subscriber<sensor_msgs::msg::Imu>> imu_acc_sub_filtered_;
+        std::shared_ptr<message_filters::Subscriber<sensor_msgs::msg::Imu>> imu_gyr_sub_filtered_;
+        std::shared_ptr<message_filters::Synchronizer<message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::Imu, sensor_msgs::msg::Imu>>> sync_imu_;
+        vector<sensor_msgs::msg::Imu> imu_buff;
+        vector<sensor_msgs::msg::Imu> imu_accel_buff;
+        vector<sensor_msgs::msg::Imu> imu_gyro_buff;
+        vector<ORB_SLAM3::IMU::Point> vImuMeas;
+        void synchronizedImuCallback(const sensor_msgs::msg::Imu::ConstSharedPtr& acc_msg, const sensor_msgs::msg::Imu::ConstSharedPtr& gyr_msg);
+
+        // publisher for poses
+        rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr poseStampedPublisher_;
+
+        //mutexes
+        std::mutex rimg_mutex_;
+        std::mutex imu_mutex_;
+        std::mutex imu_accel_mutex_;
+        std::mutex imu_gyro_mutex_;
+        std::condition_variable rimg_cv;
+
+
 
         //* ORB_SLAM3 related variables
         ORB_SLAM3::System* pAgent; // pointer to a ORB SLAM3 object
@@ -97,11 +154,19 @@ class MonocularMode : public rclcpp::Node
         void experimentSetting_callback(const std_msgs::msg::String& msg); // Callback to process settings sent over by Python node
         void Timestep_callback(const std_msgs::msg::Float64& time_msg); // Callback to process the timestep for this image
         void Img_callback(const sensor_msgs::msg::Image& msg); // Callback to process RGB image and semantic matrix sent by Python node
+        void Imu_accel_callback(const sensor_msgs::msg::Imu& msg);
+        void Imu_gyro_callback(const sensor_msgs::msg::Imu& msg);
+        void ImgR_callback(const sensor_msgs::msg::Image& msg);
+        void ImgL_callback(const sensor_msgs::msg::Image& msg);
+        void Dpt_callback(const sensor_msgs::msg::Image& msg);
+        void RGB_callback(const sensor_msgs::msg::Image& msg);
+
+        rclcpp::Time last_time_img_=rclcpp::Time(0);
+        rclcpp::Time img_timestamp; //current time stamp
         
         //* Helper functions
         // ORB_SLAM3::eigenMatXf convertToEigenMat(const std_msgs::msg::Float32MultiArray& msg); // Helper method, converts semantic matrix eigenMatXf, a Eigen 4x4 float matrix
         void initializeVSLAM(std::string& configString); //* Method to bind an initialized VSLAM framework to this node
-
 
 };
 

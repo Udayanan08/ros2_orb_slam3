@@ -26,34 +26,61 @@ MonocularMode::MonocularMode() :Node("mono_node_cpp")
     // std::cout<<"VLSAM NODE STARTED\n\n";
     RCLCPP_INFO(this->get_logger(), "\nORB-SLAM3-V1 NODE STARTED");
 
-    this->declare_parameter("node_name_arg", "not_given"); // Name of this agent 
-    this->declare_parameter("voc_file_arg", "file_not_set"); // Needs to be overriden with appropriate name  
-    this->declare_parameter("settings_file_path_arg", "file_path_not_set"); // path to settings file  
-    
+    // declare the parameteres
+    this->declare_parameter("node_name_arg", "orb_slam_3");
+    this->declare_parameter("slam_type", "IMU_RGBD");
+    this->declare_parameter("settings_file", "/home/ud/ORB_SLAM3/Examples/Monocular/gazebo_cam.yaml");
+    this->declare_parameter("voc_file_arg", "/home/ud/ORB_SLAM3/Vocabulary/ORBvoc.txt.bin");
+    this->declare_parameter("cam_topic_name_left", "/camera/image_raw");
+    this->declare_parameter("cam_topic_name_right", "/camera/right/image_raw");
+    this->declare_parameter("imu_topic_name", "/imu");
+    this->declare_parameter("rgb_topic_name", "/rgb/image_raw");
+    this->declare_parameter("depth_topic_name", "/depth/image_raw");
+    this->declare_parameter("camera_type", "realsense");
+
+    // this->declare_parameter("node_name_arg", "not_given"); // Name of this agent 
+    // this->declare_parameter("voc_file_arg", "file_not_set"); // Needs to be overriden with appropriate name  
+    // this->declare_parameter("settings_file_path_arg", "file_path_not_set"); // path to settings file  
+    // this->declare_parameter("cam_topic_name_left", "not_set");
+    // this->declare_parameter("imu_topic_name", "not_set");
+    // this->declare_parameter("dataset_type", "not_set");
+    // this->declare_parameter("slam_type", "not_set");
+
     //* Watchdog, populate default values
-    nodeName = "not_set";
-    vocFilePath = "file_not_set";
-    settingsFilePath = "file_not_set";
+    // nodeName = "not_set";
+    // vocFilePath = "file_not_set";
+    // settingsFilePath = "file_not_set";
+    // cam_topic_name_left = "not_set";
+    // imu_topic_name = "not_set";
+    // slam_type = "not_set";
 
     //* Populate parameter values
-    rclcpp::Parameter param1 = this->get_parameter("node_name_arg");
-    nodeName = param1.as_string();
-    
-    rclcpp::Parameter param2 = this->get_parameter("voc_file_arg");
-    vocFilePath = param2.as_string();
 
-    rclcpp::Parameter param3 = this->get_parameter("settings_file_path_arg");
-    settingsFilePath = param3.as_string();
+    nodeName = this->get_parameter("node_name_arg").as_string();
+    vocFilePath = this->get_parameter("voc_file_arg").as_string();
+    settingsFilePath = this->get_parameter("settings_file").as_string();
+    cam_topic_name_left = this->get_parameter("cam_topic_name_left").as_string();
+    cam_topic_name_right = this->get_parameter("cam_topic_name_right").as_string();
+    imu_topic_name = this->get_parameter("imu_topic_name").as_string();
+    rgb_topic_name = this->get_parameter("rgb_topic_name").as_string();
+    depth_topic_name = this->get_parameter("depth_topic_name").as_string();
+    camera_type = this->get_parameter("camera_type").as_string();
+    slam_type = this->get_parameter("slam_type").as_string();
+
+    auto qos = rclcpp::SensorDataQoS();
+
+
+    // std::string pkg_path = ament_index_cpp::get_package_share_directory("ros2_orb_slam3");
+    // vocFilePath = pkg_path + "/orb_slam3/Vocabulary/ORBvoc.txt.bin";
 
     // rclcpp::Parameter param4 = this->get_parameter("settings_file_name_arg");
     
   
     //* HARDCODED, set paths
-    if (vocFilePath == "file_not_set" || settingsFilePath == "file_not_set")
+    if (vocFilePath == "file_not_set")
     {
         pass;
         vocFilePath = homeDir + "/" + packagePath + "orb_slam3/Vocabulary/ORBvoc.txt.bin";
-        settingsFilePath = "";
     }
 
     // std::cout<<"vocFilePath: "<<vocFilePath<<std::endl;
@@ -67,7 +94,22 @@ MonocularMode::MonocularMode() :Node("mono_node_cpp")
     
     subexperimentconfigName = "/mono_py_driver/experiment_settings"; // topic that sends out some configuration parameters to the cpp ndoe
     pubconfigackName = "/mono_py_driver/exp_settings_ack"; // send an acknowledgement to the python node
-    subImgMsgName = "/mono_py_driver/img_msg"; // topic to receive RGB image messages
+    //subImgMsgName = "/mono_py_driver/img_msg"; // topic to receive RGB image messages
+    if(cam_topic_name_left == "not_set")
+    {
+        subImgMsgName = "/orb/cam_image";
+    }
+    else
+    {
+        subImgMsgName = cam_topic_name_left;
+    }
+    if(imu_topic_name == "not_set"){
+        subImuMsgName = "/imu0";
+    }else{
+        subImuMsgName = imu_topic_name;
+    }
+    if(camera_type == "not_set"){ camera_type = "realsense";}
+     // topic to receive RGB image messages
     subTimestepMsgName = "/mono_py_driver/timestep_msg"; // topic to receive RGB image messages
     subImgLMsgName = "/camera/camera/infra1/image_rect_raw";
     subImgRMsgName = "/camera/camera/infra2/image_rect_raw";
@@ -76,8 +118,16 @@ MonocularMode::MonocularMode() :Node("mono_node_cpp")
     subImuAccMsgName = "/camera/camera/accel/sample";
     subImuGyrMsgName = "/camera/camera/gyro/sample";
 
+    if(settingsFilePath=="file_path_not_set")
+    {
+        experimentConfig = "/home/ud/IISC/vo/ORB_SLAM3/Examples/Monocular/gazebo_cam";
+    }else
+    {
+        experimentConfig = settingsFilePath;
+    }
     // experimentConfig = "/home/ud/IISC/vo/ORB_SLAM3/Examples/RGB-D/RealSense_D435i";
-    experimentConfig = "/home/ud/IISC/vo/ORB_SLAM3/Examples/Stereo-Inertial/RealSense_D435i";
+    // experimentConfig = "/home/ud/IISC/vo/ORB_SLAM3/Examples/Stereo-Inertial/RealSense_D435i";
+    // experimentConfig = "/home/ud/IISC/vo/ORB_SLAM3/Examples/Monocular/gazebo_cam";
     initializeVSLAM(experimentConfig);
 
     //* subscribe to python node to receive settings
@@ -87,16 +137,22 @@ MonocularMode::MonocularMode() :Node("mono_node_cpp")
     // configAck_publisher_ = this->create_publisher<std_msgs::msg::String>(pubconfigackName, 10);
 
     //* subscrbite to the image messages coming from the Python driver node
-    if(sensorType == ORB_SLAM3::System::MONOCULAR || sensorType == ORB_SLAM3::System::MONOCULAR){
+    if(sensorType == ORB_SLAM3::System::MONOCULAR || sensorType == ORB_SLAM3::System::IMU_MONOCULAR){
         subImgMsg_= this->create_subscription<sensor_msgs::msg::Image>(subImgMsgName, 1, std::bind(&MonocularMode::Img_callback, this, _1));
         if(sensorType == ORB_SLAM3::System::IMU_MONOCULAR){
-            // subImuAccelMsg_ = this->create_subscription<sensor_msgs::msg::Imu>(subImuAccelMsgName, 10, std::bind(&MonocularMode::Imu_accel_callback, this, _1));
-            // subImuGyroMsg_ = this->create_subscription<sensor_msgs::msg::Imu>(subImuGyroMsgName, 10, std::bind(&MonocularMode::Imu_gyro_callback, this, _1));
-            imu_acc_sub_filtered_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Imu>>(this, subImuAccMsgName.c_str(), rmw_qos_profile_sensor_data);
-            imu_gyr_sub_filtered_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Imu>>(this, subImuGyrMsgName.c_str(), rmw_qos_profile_sensor_data);
-            using SyncPolicy_imu = message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::Imu, sensor_msgs::msg::Imu>;
-            sync_imu_ = std::make_shared<message_filters::Synchronizer<SyncPolicy_imu>>(SyncPolicy_imu(10), *imu_acc_sub_filtered_, *imu_gyr_sub_filtered_);
-            sync_imu_->registerCallback(std::bind(&MonocularMode::synchronizedImuCallback, this, std::placeholders::_1, std::placeholders::_2));
+            if(camera_type == "r"){
+                // subImuAccelMsg_ = this->create_subscription<sensor_msgs::msg::Imu>(subImuAccelMsgName, 10, std::bind(&MonocularMode::Imu_accel_callback, this, _1));
+                // subImuGyroMsg_ = this->create_subscription<sensor_msgs::msg::Imu>(subImuGyroMsgName, 10, std::bind(&MonocularMode::Imu_gyro_callback, this, _1));
+                // imu_acc_sub_filtered_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Imu>>(this, subImuAccMsgName.c_str(), rmw_qos_profile_sensor_data);
+                // imu_gyr_sub_filtered_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Imu>>(this, subImuGyrMsgName.c_str(), rmw_qos_profile_sensor_data);
+                // using SyncPolicy_imu = message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::Imu, sensor_msgs::msg::Imu>;
+                // sync_imu_ = std::make_shared<message_filters::Synchronizer<SyncPolicy_imu>>(SyncPolicy_imu(10), *imu_acc_sub_filtered_, *imu_gyr_sub_filtered_);
+                // sync_imu_->registerCallback(std::bind(&MonocularMode::synchronizedImuCallback, this, std::placeholders::_1, std::placeholders::_2));
+            }
+            else if (camera_type == "reealsense")
+            {
+                subImuMsg_ = this->create_subscription<sensor_msgs::msg::Imu>(subImuMsgName, 100, std::bind(&MonocularMode::ImuCallback, this, _1));
+            }    
         }
     }
 
@@ -105,19 +161,22 @@ MonocularMode::MonocularMode() :Node("mono_node_cpp")
 
     //Stereo topics
     if(sensorType == ORB_SLAM3::System::STEREO || sensorType == ORB_SLAM3::System::IMU_STEREO){
-        img1_sub_filtered_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image>>(this, subImgLMsgName.c_str(), rmw_qos_profile_sensor_data);
-        img2_sub_filtered_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image>>(this, subImgRMsgName.c_str(), rmw_qos_profile_sensor_data);
+        img1_sub_filtered_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image>>(this, cam_topic_name_left.c_str(), rmw_qos_profile_sensor_data);
+        img2_sub_filtered_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image>>(this, cam_topic_name_right.c_str(), rmw_qos_profile_sensor_data);
         using SyncPolicy = message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::Image, sensor_msgs::msg::Image>;
         sync_ = std::make_shared<message_filters::Synchronizer<SyncPolicy>>(SyncPolicy(10), *img1_sub_filtered_, *img2_sub_filtered_);
         sync_->registerCallback(std::bind(&MonocularMode::synchronizedCallback, this, std::placeholders::_1, std::placeholders::_2));
         // subImgRMsg_ = this->create_subscription<sensor_msgs::msg::Image>(subImgRMsgName, 10, std::bind(&MonocularMode::ImgR_callback, this, _1));
         // subImgLMsg_ = this->create_subscription<sensor_msgs::msg::Image>(subImgLMsgName, 1, std::bind(&MonocularMode::ImgL_callback, this, _1));
         if(sensorType == ORB_SLAM3::System::IMU_STEREO){
-            imu_acc_sub_filtered_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Imu>>(this, subImuAccMsgName.c_str(), rmw_qos_profile_sensor_data);
-            imu_gyr_sub_filtered_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Imu>>(this, subImuGyrMsgName.c_str(), rmw_qos_profile_sensor_data);
-            using SyncPolicy_imu = message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::Imu, sensor_msgs::msg::Imu>;
-            sync_imu_ = std::make_shared<message_filters::Synchronizer<SyncPolicy_imu>>(SyncPolicy_imu(10), *imu_acc_sub_filtered_, *imu_gyr_sub_filtered_);
-            sync_imu_->registerCallback(std::bind(&MonocularMode::synchronizedImuCallback, this, std::placeholders::_1, std::placeholders::_2));
+            if(camera_type == "realsense"){
+                subImuMsg_ = this->create_subscription<sensor_msgs::msg::Imu>(subImuMsgName, 100, std::bind(&MonocularMode::ImuCallback, this, _1));
+            }
+            // imu_acc_sub_filtered_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Imu>>(this, subImuAccMsgName.c_str(), rmw_qos_profile_sensor_data);
+            // imu_gyr_sub_filtered_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Imu>>(this, subImuGyrMsgName.c_str(), rmw_qos_profile_sensor_data);
+            // using SyncPolicy_imu = message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::Imu, sensor_msgs::msg::Imu>;
+            // sync_imu_ = std::make_shared<message_filters::Synchronizer<SyncPolicy_imu>>(SyncPolicy_imu(10), *imu_acc_sub_filtered_, *imu_gyr_sub_filtered_);
+            // sync_imu_->registerCallback(std::bind(&MonocularMode::synchronizedImuCallback, this, std::placeholders::_1, std::placeholders::_2));
             // subImuAccelMsg_ = this->create_subscription<sensor_msgs::msg::Imu>(subImuAccelMsgName, 10, std::bind(&MonocularMode::Imu_accel_callback, this, _1));
             // subImuGyroMsg_ = this->create_subscription<sensor_msgs::msg::Imu>(subImuGyroMsgName, 10, std::bind(&MonocularMode::Imu_gyro_callback, this, _1));
         }
@@ -125,21 +184,24 @@ MonocularMode::MonocularMode() :Node("mono_node_cpp")
 
     //RGBD topics
     if(sensorType == ORB_SLAM3::System::RGBD || sensorType == ORB_SLAM3::System::IMU_RGBD){
-        subDptMsg_ = this->create_subscription<sensor_msgs::msg::Image>(subDptMsgName, 1, std::bind(&MonocularMode::Dpt_callback, this, _1));
-        subRGBMsg_ = this->create_subscription<sensor_msgs::msg::Image>(subRGBMsgName, 1, std::bind(&MonocularMode::RGB_callback, this, _1));
-        img1_sub_filtered_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image>>(this, subDptMsgName.c_str(), rmw_qos_profile_sensor_data);
-        img2_sub_filtered_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image>>(this, subRGBMsgName.c_str(), rmw_qos_profile_sensor_data);
+        // subDptMsg_ = this->create_subscription<sensor_msgs::msg::Image>(depth_topic_name, 1, std::bind(&MonocularMode::Dpt_callback, this, _1));
+        // subRGBMsg_ = this->create_subscription<sensor_msgs::msg::Image>(rgb_topic_name, 1, std::bind(&MonocularMode::RGB_callback, this, _1));
+        img1_sub_filtered_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image>>(this, depth_topic_name.c_str(), rmw_qos_profile_sensor_data);
+        img2_sub_filtered_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image>>(this, rgb_topic_name.c_str(), rmw_qos_profile_sensor_data);
         using SyncPolicy = message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::Image, sensor_msgs::msg::Image>;
         sync_ = std::make_shared<message_filters::Synchronizer<SyncPolicy>>(SyncPolicy(10), *img2_sub_filtered_, *img1_sub_filtered_);
         sync_->registerCallback(std::bind(&MonocularMode::synchronizedDepthCallback, this, std::placeholders::_1, std::placeholders::_2));
         if(sensorType == ORB_SLAM3::System::IMU_RGBD){
+            if(camera_type == "realsense"){
+                subImuMsg_ = this->create_subscription<sensor_msgs::msg::Imu>(imu_topic_name, qos, std::bind(&MonocularMode::ImuCallback, this, _1));
+            }
             // subImuAccMsg_ = this->create_subscription<sensor_msgs::msg::Imu>(subImuAccMsgName, 10, std::bind(&MonocularMode::Imu_accel_callback, this, _1));
             // subImuGyrMsg_ = this->create_subscription<sensor_msgs::msg::Imu>(subImuGyrMsgName, 10, std::bind(&MonocularMode::Imu_gyro_callback, this, _1));
-            imu_acc_sub_filtered_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Imu>>(this, subImuAccMsgName.c_str(), rmw_qos_profile_sensor_data);
-            imu_gyr_sub_filtered_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Imu>>(this, subImuGyrMsgName.c_str(), rmw_qos_profile_sensor_data);
-            using SyncPolicy_imu = message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::Imu, sensor_msgs::msg::Imu>;
-            sync_imu_ = std::make_shared<message_filters::Synchronizer<SyncPolicy_imu>>(SyncPolicy_imu(10), *imu_acc_sub_filtered_, *imu_gyr_sub_filtered_);
-            sync_imu_->registerCallback(std::bind(&MonocularMode::synchronizedImuCallback, this, std::placeholders::_1, std::placeholders::_2));
+            // imu_acc_sub_filtered_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Imu>>(this, subImuAccMsgName.c_str(), rmw_qos_profile_sensor_data);
+            // imu_gyr_sub_filtered_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Imu>>(this, subImuGyrMsgName.c_str(), rmw_qos_profile_sensor_data);
+            // using SyncPolicy_imu = message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::Imu, sensor_msgs::msg::Imu>;
+            // sync_imu_ = std::make_shared<message_filters::Synchronizer<SyncPolicy_imu>>(SyncPolicy_imu(10), *imu_acc_sub_filtered_, *imu_gyr_sub_filtered_);
+            // sync_imu_->registerCallback(std::bind(&MonocularMode::synchronizedImuCallback, this, std::placeholders::_1, std::placeholders::_2));
         }
     }
     
@@ -199,19 +261,36 @@ void MonocularMode::initializeVSLAM(std::string& configString){
     
     //* Build .yaml`s file path
     
-    settingsFilePath = settingsFilePath.append(configString);
-    settingsFilePath = settingsFilePath.append(".yaml"); // Example ros2_ws/src/orb_slam3_ros2/orb_slam3/config/Monocular/TUM2.yaml
+    // settingsFilePath = settingsFilePath.append(configString);
+    settingsFilePath = settingsFilePath.append(""); // Example ros2_ws/src/orb_slam3_ros2/orb_slam3/config/Monocular/TUM2.yaml
 
     RCLCPP_INFO(this->get_logger(), "Path to settings file: %s", settingsFilePath.c_str());
     
     // NOTE if you plan on passing other configuration parameters to ORB SLAM3 Systems class, do it here
     // NOTE you may also use a .yaml file here to set these values
-    sensorType = ORB_SLAM3::System::IMU_STEREO; 
+    if(slam_type == "not_set" || slam_type == "MONOCULAR"){
+        sensorType = ORB_SLAM3::System::MONOCULAR;
+    }
+    else if(slam_type == "IMU_MONOCULAR"){
+        sensorType = ORB_SLAM3::System::IMU_MONOCULAR;
+    }
+    else if(slam_type == "IMU_STEREO"){
+        sensorType = ORB_SLAM3::System::IMU_STEREO;
+    }
+    else if(slam_type == "STEREO"){
+        sensorType = ORB_SLAM3::System::STEREO;
+    }
+    else if(slam_type == "IMU_RGBD"){
+        sensorType = ORB_SLAM3::System::IMU_RGBD;
+    }
+    else if(slam_type == "RGBD"){
+        sensorType = ORB_SLAM3::System::RGBD;
+    }
     enablePangolinWindow = true; // Shows Pangolin window output
     enableOpenCVWindow = true; // Shows OpenCV window output
     
     pAgent = new ORB_SLAM3::System(vocFilePath, settingsFilePath, sensorType, enablePangolinWindow);
-    std::cout << "MonocularMode node initialized" << std::endl; // TODO needs a better message
+    std::cout << slam_type << " node initialized" << std::endl; // TODO needs a better message
 }
 
 //* Callback that processes timestep sent over ROS
@@ -227,10 +306,133 @@ void MonocularMode::Img_callback(const sensor_msgs::msg::Image& msg)
     cv_bridge::CvImagePtr cv_ptr; //* Does not create a copy, memory efficient
     
     //* Convert ROS image to openCV image
+    cv::Mat img_cv8uc1;
+    std::vector<ORB_SLAM3::IMU::Point> localImuMeas;
     try
     {
         //cv::Mat im =  cv_bridge::toCvShare(msg.img, msg)->image;
-        cv_ptr = cv_bridge::toCvCopy(msg); // Local scope
+            cv_ptr = cv_bridge::toCvCopy(msg);
+            img_timestamp = msg.header.stamp;
+            cv::Mat img_mono_16 = cv_ptr->image;
+            img_mono_16.convertTo(img_cv8uc1, CV_8UC1, 1.0/256.0);
+            this->timeStep = img_timestamp.nanoseconds() / 1e9;
+
+            // if(sensorType == ORB_SLAM3::System::IMU_MONOCULAR){
+            //     // std::lock_guard<std::mutex> lock(imu_mutex_);
+            //     std::vector<sensor_msgs::msg::Imu> imu_buff_copy;
+
+            //     {
+            //         std::lock_guard<std::mutex> lock(imu_mutex_);
+            //         imu_buff_copy = imu_buff;
+            //         imu_buff.clear();  // clear original — IMU callback can now push freely
+            //     } 
+                
+            //     int64_t img_tim = img_timestamp.nanoseconds();
+            //     const int64_t IMU_CAM_OFFSET_NS = 25000000LL;  // 25ms
+            //     const int64_t MAX_WINDOW_NS     = 30000000LL;  // 30ms max — never exceed one frame width
+
+            //     // ✅ Clamp the lower bound so window never exceeds MAX_WINDOW_NS
+            //     int64_t effective_last = std::max(last_time_img_, img_tim - MAX_WINDOW_NS);
+
+            //     auto it = imu_buff_copy.begin();
+            //     localImuMeas.clear();
+
+            //     while(it != imu_buff_copy.end()){
+            //         rclcpp::Time imu_time(it->header.stamp.sec, it->header.stamp.nanosec, RCL_ROS_TIME);
+            //         int64_t tim = imu_time.nanoseconds();
+
+            //         // std::cout << "tim: " << tim 
+            //         //         << " last: " << effective_last
+            //         //         << " img: "  << img_tim << std::endl;
+
+            //         if(tim > effective_last && tim <= img_tim + IMU_CAM_OFFSET_NS){
+            //             localImuMeas.push_back(ORB_SLAM3::IMU::Point(
+            //                 it->linear_acceleration.x, it->linear_acceleration.y, it->linear_acceleration.z,
+            //                 it->angular_velocity.x, it->angular_velocity.y, it->angular_velocity.z,
+            //                 tim / 1e9));
+            //             it = imu_buff_copy.erase(it);
+            //         }
+            //         else if(tim > img_tim + IMU_CAM_OFFSET_NS){
+            //             break;
+            //         }
+            //         else{
+            //             it = imu_buff_copy.erase(it);  // discard anything older than the clamped window
+            //         }
+            //     }
+
+            //     std::cout << "Collected IMU: " << localImuMeas.size() << std::endl;
+
+            //     if(localImuMeas.size() < 1){
+            //         RCLCPP_WARN(this->get_logger(), 
+            //             "Too few IMU measurements (%zu), skipping", localImuMeas.size());
+            //         return;  // don't update last_time_img_
+            //     }
+            // }
+
+            // // ✅ only update on successful frames
+            // last_time_img_ = img_timestamp.nanoseconds();
+
+            if(sensorType == ORB_SLAM3::System::IMU_MONOCULAR){
+
+                std::vector<sensor_msgs::msg::Imu> imu_buff_copy;
+                {
+                    std::lock_guard<std::mutex> lock(imu_mutex_);
+                    imu_buff_copy = imu_buff;
+                    imu_buff.clear();
+                }
+
+                int64_t img_tim = img_timestamp.nanoseconds();
+                const int64_t IMU_CAM_OFFSET_NS = 40000000LL;  // 40ms
+                const int64_t MAX_WINDOW_NS     = 35000000LL;  // ~1.5 frames max
+                const size_t  MIN_IMU_COUNT     = 3;           // minimum to proceed
+
+                // Clamp window to avoid collecting too many after a skip
+                int64_t effective_last = std::max(last_time_img_, img_tim - MAX_WINDOW_NS);
+
+                localImuMeas.clear();
+                std::vector<sensor_msgs::msg::Imu> future_msgs;
+
+                for(size_t i = 0; i < imu_buff_copy.size(); i++){
+                    auto& imu_msg = imu_buff_copy[i];
+                    rclcpp::Time imu_time(imu_msg.header.stamp.sec, imu_msg.header.stamp.nanosec, RCL_ROS_TIME);
+                    int64_t tim = imu_time.nanoseconds();
+
+                    if(tim > effective_last && tim <= img_tim + IMU_CAM_OFFSET_NS){
+                        localImuMeas.push_back(ORB_SLAM3::IMU::Point(
+                            imu_msg.linear_acceleration.x, imu_msg.linear_acceleration.y, imu_msg.linear_acceleration.z,
+                            imu_msg.angular_velocity.x, imu_msg.angular_velocity.y, imu_msg.angular_velocity.z,
+                            tim / 1e9));
+                    }
+                    else if(tim > img_tim + IMU_CAM_OFFSET_NS){
+                        // save remaining for next frame
+                        future_msgs.insert(future_msgs.end(),
+                            imu_buff_copy.begin() + i,
+                            imu_buff_copy.end());
+                        break;
+                    }
+                    // old messages discarded
+                }
+
+                // Put future messages back
+                if(!future_msgs.empty()){
+                    std::lock_guard<std::mutex> lock(imu_mutex_);
+                    imu_buff.insert(imu_buff.begin(), future_msgs.begin(), future_msgs.end());
+                }
+
+                std::cout << "Collected IMU: " << localImuMeas.size() << std::endl;
+
+                if(localImuMeas.size() < MIN_IMU_COUNT){
+                    RCLCPP_WARN(this->get_logger(),
+                        "Too few IMU measurements (%zu), skipping", localImuMeas.size());
+                    // ✅ do NOT update last_time_img_ — let next frame recollect
+                    return;
+                }
+            }
+
+            last_time_img_ = img_timestamp.nanoseconds(); // ✅ only on success
+        
+
+
         
         // DEBUGGING, Show image
         // Update GUI Window
@@ -247,10 +449,52 @@ void MonocularMode::Img_callback(const sensor_msgs::msg::Image& msg)
     
     //* Perform all ORB-SLAM3 operations in Monocular mode
     //! Pose with respect to the camera coordinate frame not the world coordinate frame
-    Sophus::SE3f Tcw = pAgent->TrackMonocular(cv_ptr->image, timeStep); 
+    Sophus::SE3f Tcw;
+    if(sensorType == ORB_SLAM3::System::STEREO){
+        Tcw = pAgent->TrackMonocular(img_cv8uc1, this->timeStep);
+    }
+    else if(sensorType == ORB_SLAM3::System::MONOCULAR){
+        Tcw = pAgent->TrackMonocular(cv_ptr->image, this->timeStep);
+        std::cout<<"img sent"<<std::endl;
+    }
+    else if(sensorType == ORB_SLAM3::System::RGBD){
+        // Tcw = pAgent->TrackM
+    }
+    else{
+        Tcw = pAgent->TrackMonocular(cv_ptr->image, this->timeStep, vImuMeas);
+        std::cout<<"img and imu sent"<<std::endl;
+    }
+    // Sophus::SE3f Tcw = pAgent->TrackMonocular(img_cv8uc1, timeStep); 
     
     //* An example of what can be done after the pose w.r.t camera coordinate frame is computed by ORB SLAM3
     //Sophus::SE3f Twc = Tcw.inverse(); //* Pose with respect to global image coordinate, reserved for future use
+
+    Sophus::SE3f Twc = Tcw.inverse();
+
+    Eigen::Matrix3f R = Twc.rotationMatrix();
+    Eigen::Vector3f t = Twc.translation();
+
+    // Convert to quaternion
+    Eigen::Quaternionf q(R);
+
+    // Fill Pose message
+    geometry_msgs::msg::PoseStamped pose_msg;
+    pose_msg.header.stamp = msg.header.stamp;  // or use this->get_clock()->now()
+    pose_msg.header.frame_id = "map";
+    pose_msg.pose.position.x = t.x();
+    pose_msg.pose.position.y = t.y();
+    pose_msg.pose.position.z = t.z();
+
+    pose_msg.pose.orientation.x = q.x();
+    pose_msg.pose.orientation.y = q.y();
+    pose_msg.pose.orientation.z = q.z();
+    pose_msg.pose.orientation.w = q.w();
+
+    // Publish
+    poseStampedPublisher_->publish(pose_msg);
+    std::cout<<"Pose: "<<t.x()<<t.y()<<t.z()<<std::endl;
+
+    last_time_img_ = img_timestamp.nanoseconds();
 
 }
 
@@ -274,13 +518,13 @@ void MonocularMode::ImgL_callback(const sensor_msgs::msg::Image& msg){
             auto it = imu_buff.begin();
             vImuMeas.clear();
             while(it != imu_buff.end()){
-                rclcpp::Time tim = it->header.stamp;
-                if(tim > last_time_img_ && tim<=img_timestamp){
+                int64_t tim = it->header.stamp.nanosec;
+                if(tim > last_time_img_ && tim<=img_timestamp.nanoseconds()){
                     vImuMeas.push_back(ORB_SLAM3::IMU::Point(it->linear_acceleration.x, it->linear_acceleration.y, it->linear_acceleration.z,
-                    it->angular_velocity.x, it->angular_velocity.y, it->angular_velocity.z, tim.nanoseconds()/1e9));
+                    it->angular_velocity.x, it->angular_velocity.y, it->angular_velocity.z, tim/1e9));
                     it = imu_buff.erase(it);
                 }
-                else if(tim>img_timestamp){
+                else if(tim>img_timestamp.nanoseconds()){
                     break;
                 }
                 else{
@@ -288,26 +532,26 @@ void MonocularMode::ImgL_callback(const sensor_msgs::msg::Image& msg){
                 }
             }
         }
-        std::unique_lock<std::mutex> lock(rimg_mutex_);
-        rimg_cv.wait(lock, [this] { return !rimg_buff.empty(); });
-        std::cout<<"buffer size before: "<<rimg_buff.size()<<std::endl;
-        auto rit = rimg_buff.begin();
-        while(rit != rimg_buff.end()){
-            rclcpp::Time tim = rit->header.stamp;
-            std::cout<<"buffer size: "<<rimg_buff.size()<<" "<<std::abs(tim.nanoseconds()-img_timestamp.nanoseconds())<<std::endl;
+        // std::unique_lock<std::mutex> lock(rimg_mutex_);
+        // rimg_cv.wait(lock, [this] { return !rimg_buff.empty(); });
+        // std::cout<<"buffer size before: "<<rimg_buff.size()<<std::endl;
+        // auto rit = rimg_buff.begin();
+        // while(rit != rimg_buff.end()){
+        //     int64_t tim = rit->header.stamp.nanosec;
+        //     std::cout<<"buffer size: "<<rimg_buff.size()<<" "<<std::abs(tim-img_timestamp.nanoseconds())<<std::endl;
             
-            if(std::abs(tim.nanoseconds()-img_timestamp.nanoseconds())<=1000000){
-                rcv_ptr = cv_bridge::toCvCopy(*rit);
-                rit = rimg_buff.erase(rit);
-                break;
-            }
-            else if(tim.nanoseconds()>(img_timestamp.nanoseconds()+1000000)){
-                break;
-            }
-            else{
-                rit = rimg_buff.erase(rit);
-            }
-        }
+        //     if(std::abs(tim-img_timestamp.nanoseconds())<=1000000){
+        //         rcv_ptr = cv_bridge::toCvCopy(*rit);
+        //         rit = rimg_buff.erase(rit);
+        //         break;
+        //     }
+        //     else if(tim>(img_timestamp.nanoseconds()+1000000)){
+        //         break;
+        //     }
+        //     else{
+        //         rit = rimg_buff.erase(rit);
+        //     }
+        // }
     }
     catch (cv_bridge::Exception& e){
         RCLCPP_ERROR(this->get_logger(),"Error reading image");
@@ -346,7 +590,7 @@ void MonocularMode::ImgL_callback(const sensor_msgs::msg::Image& msg){
     poseStampedPublisher_->publish(pose_msg);
     std::cout<<"Pose: "<<t.x()<<t.y()<<t.z()<<std::endl;
 
-    last_time_img_ = img_timestamp;
+    last_time_img_ = img_timestamp.nanoseconds();
 
 }
 
@@ -381,6 +625,17 @@ void MonocularMode::synchronizedImuCallback(
     }
 }
 
+void MonocularMode::ImuCallback(
+    const sensor_msgs::msg::Imu::ConstSharedPtr& imu_msg
+){
+    std::lock_guard<std::mutex> lock(imu_mutex_);
+    {
+        sensor_msgs::msg::Imu msg = *imu_msg;
+        imu_buff.push_back(*imu_msg);
+        // std::cout<<"message :"<<imu_buff.size()<<std::endl;
+    }
+}
+
 void MonocularMode::synchronizedCallback(
     const sensor_msgs::msg::Image::ConstSharedPtr& imgl_msg,
     const sensor_msgs::msg::Image::ConstSharedPtr& imgr_msg
@@ -393,21 +648,21 @@ void MonocularMode::synchronizedCallback(
         rcv_ptr = cv_bridge::toCvCopy(imgr_msg);
         img_timestamp = imgl_msg->header.stamp;
         this->timeStep = img_timestamp.nanoseconds()/1e9;
-        last_time_img_ = img_timestamp;
+        last_time_img_ = img_timestamp.nanoseconds();
         
         if(sensorType==ORB_SLAM3::System::IMU_STEREO){
             std::lock_guard<std::mutex> lock(imu_mutex_);
             auto it = imu_buff.begin();
             vImuMeas.clear();
             while(it != imu_buff.end()){
-                rclcpp::Time tim = it->header.stamp;
-                if(tim<=img_timestamp){
+                int64_t tim = it->header.stamp.nanosec;
+                if(tim<=img_timestamp.nanoseconds()){
                     // std::cout<<"imu : "<<vImuMeas.size()<<std::endl;
                     vImuMeas.push_back(ORB_SLAM3::IMU::Point(it->linear_acceleration.x, it->linear_acceleration.y, it->linear_acceleration.z,
-                    it->angular_velocity.x, it->angular_velocity.y, it->angular_velocity.z, tim.nanoseconds()/1e9));
+                    it->angular_velocity.x, it->angular_velocity.y, it->angular_velocity.z, tim/1e9));
                     it = imu_buff.erase(it);
                 }
-                else if(tim>img_timestamp){
+                else if(tim>img_timestamp.nanoseconds()){
                     break;
                 }
                 else{
@@ -457,32 +712,39 @@ void MonocularMode::synchronizedCallback(
 }
 
 void MonocularMode::synchronizedDepthCallback(
-    const sensor_msgs::msg::Image::ConstSharedPtr& imgrgb_msg,
-    const sensor_msgs::msg::Image::ConstSharedPtr& imgdpt_msg
+    const sensor_msgs::msg::Image::ConstSharedPtr &imgrgb_msg,
+    const sensor_msgs::msg::Image::ConstSharedPtr &imgdpt_msg
 )
 {
     cv_bridge::CvImagePtr rgbcv_ptr;
     cv_bridge::CvImagePtr dptcv_ptr;
+    // std::cout << "message received !"<<std::endl;
+    
     try{
         rgbcv_ptr = cv_bridge::toCvCopy(imgrgb_msg);
         dptcv_ptr = cv_bridge::toCvCopy(imgdpt_msg);
+        // std::cout << "RGB type: "
+        //   << rgbcv_ptr->image.type()
+        //   << " channels: "
+        //   << rgbcv_ptr->image.channels()
+        //   << std::endl;
         img_timestamp = imgrgb_msg->header.stamp;
         this->timeStep = img_timestamp.nanoseconds()/1e9;
-        last_time_img_ = img_timestamp;
+        last_time_img_ = img_timestamp.nanoseconds();
         
         if(sensorType==ORB_SLAM3::System::IMU_RGBD){
             std::lock_guard<std::mutex> lock(imu_mutex_);
             auto it = imu_buff.begin();
             vImuMeas.clear();
             while(it != imu_buff.end()){
-                rclcpp::Time tim = it->header.stamp;
-                if(tim<=img_timestamp){
+                int64_t tim = it->header.stamp.nanosec;
+                if(tim<=img_timestamp.nanoseconds()){
                     // std::cout<<"imu : "<<vImuMeas.size()<<std::endl;
                     vImuMeas.push_back(ORB_SLAM3::IMU::Point(it->linear_acceleration.x, it->linear_acceleration.y, it->linear_acceleration.z,
-                    it->angular_velocity.x, it->angular_velocity.y, it->angular_velocity.z, tim.nanoseconds()/1e9));
+                    it->angular_velocity.x, it->angular_velocity.y, it->angular_velocity.z, tim/1e9));
                     it = imu_buff.erase(it);
                 }
-                else if(tim>img_timestamp){
+                else if(tim>img_timestamp.nanoseconds()){
                     break;
                 }
                 else{
@@ -490,7 +752,6 @@ void MonocularMode::synchronizedDepthCallback(
                 }
             }
         }
-        
     }
     catch (cv_bridge::Exception& e){
         RCLCPP_ERROR(this->get_logger(),"Error reading image");

@@ -51,6 +51,7 @@ using std::placeholders::_1; //* TODO why this is suggested in official tutorial
 #include <opencv2/highgui/highgui.hpp> // GUI tools
 #include <opencv2/core/eigen.hpp>
 #include <image_transport/image_transport.h>
+#include <ament_index_cpp/get_package_share_directory.hpp>
 
 //* ORB SLAM 3 includes
 #include "System.h" //* Also imports the ORB_SLAM3 namespace
@@ -83,6 +84,13 @@ class MonocularMode : public rclcpp::Node
         std::string nodeName = ""; // Name of this node
         std::string vocFilePath = ""; // Path to ORB vocabulary provided by DBoW2 package
         std::string settingsFilePath = ""; // Path to settings file provided by ORB_SLAM3 package
+        std::string cam_topic_name_left = ""; // Left camera topic name for monocular slam
+        std::string cam_topic_name_right = "";
+        std::string imu_topic_name = "";
+        std::string rgb_topic_name = "";
+        std::string depth_topic_name = "";
+        std::string camera_type = "";
+        std::string slam_type = "";
         bool bSettingsFromPython = false; // Flag set once when experiment setting from python node is received
         
         std::string subexperimentconfigName = ""; // Subscription topic name
@@ -102,6 +110,7 @@ class MonocularMode : public rclcpp::Node
         rclcpp::Publisher<std_msgs::msg::String>::SharedPtr configAck_publisher_;
         rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subImgMsg_subscription_;
         rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subImgMsg_;
+        rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr subImuMsg_;
         rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr subTimestepMsg_subscription_;
 
         //stereo
@@ -112,7 +121,7 @@ class MonocularMode : public rclcpp::Node
         std::shared_ptr<message_filters::Subscriber<sensor_msgs::msg::Image>> img2_sub_filtered_;
         std::shared_ptr<message_filters::Synchronizer<message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::Image, sensor_msgs::msg::Image>>> sync_;
         void synchronizedCallback(const sensor_msgs::msg::Image::ConstSharedPtr& imgl_msg, const sensor_msgs::msg::Image::ConstSharedPtr& imgr_msg);
-        void synchronizedDepthCallback(const sensor_msgs::msg::Image::ConstSharedPtr& imgrgb_msg, const sensor_msgs::msg::Image::ConstSharedPtr& imgdpt_msg);
+        void synchronizedDepthCallback(const sensor_msgs::msg::Image::ConstSharedPtr &imgrgb_msg, const sensor_msgs::msg::Image::ConstSharedPtr &imgdpt_msg);
 
 
         //RGBD
@@ -131,6 +140,7 @@ class MonocularMode : public rclcpp::Node
         vector<sensor_msgs::msg::Imu> imu_gyro_buff;
         vector<ORB_SLAM3::IMU::Point> vImuMeas;
         void synchronizedImuCallback(const sensor_msgs::msg::Imu::ConstSharedPtr& acc_msg, const sensor_msgs::msg::Imu::ConstSharedPtr& gyr_msg);
+        void ImuCallback(const sensor_msgs::msg::Imu::ConstSharedPtr& imu_msg);
 
         // publisher for poses
         rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr poseStampedPublisher_;
@@ -161,7 +171,7 @@ class MonocularMode : public rclcpp::Node
         void Dpt_callback(const sensor_msgs::msg::Image& msg);
         void RGB_callback(const sensor_msgs::msg::Image& msg);
 
-        rclcpp::Time last_time_img_=rclcpp::Time(0);
+        int64_t last_time_img_=0;
         rclcpp::Time img_timestamp; //current time stamp
         
         //* Helper functions

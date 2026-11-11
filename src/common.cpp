@@ -419,7 +419,7 @@ void MonocularMode::Img_callback(const sensor_msgs::msg::Image& msg)
                     imu_buff.insert(imu_buff.begin(), future_msgs.begin(), future_msgs.end());
                 }
 
-                std::cout << "Collected IMU: " << localImuMeas.size() << std::endl;
+                // std::cout << "Collected IMU: " << localImuMeas.size() << std::endl;
 
                 if(localImuMeas.size() < MIN_IMU_COUNT){
                     RCLCPP_WARN(this->get_logger(),
@@ -455,14 +455,14 @@ void MonocularMode::Img_callback(const sensor_msgs::msg::Image& msg)
     }
     else if(sensorType == ORB_SLAM3::System::MONOCULAR){
         Tcw = pAgent->TrackMonocular(cv_ptr->image, this->timeStep);
-        std::cout<<"img sent"<<std::endl;
+        // std::cout<<"img sent"<<std::endl;
     }
     else if(sensorType == ORB_SLAM3::System::RGBD){
         // Tcw = pAgent->TrackM
     }
     else{
         Tcw = pAgent->TrackMonocular(cv_ptr->image, this->timeStep, vImuMeas);
-        std::cout<<"img and imu sent"<<std::endl;
+        // std::cout<<"img and imu sent"<<std::endl;
     }
     // Sophus::SE3f Tcw = pAgent->TrackMonocular(img_cv8uc1, timeStep); 
     
@@ -492,7 +492,7 @@ void MonocularMode::Img_callback(const sensor_msgs::msg::Image& msg)
 
     // Publish
     poseStampedPublisher_->publish(pose_msg);
-    std::cout<<"Pose: "<<t.x()<<t.y()<<t.z()<<std::endl;
+    // std::cout<<"Pose: "<<t.x()<<t.y()<<t.z()<<std::endl;
 
     last_time_img_ = img_timestamp.nanoseconds();
 
@@ -588,7 +588,7 @@ void MonocularMode::ImgL_callback(const sensor_msgs::msg::Image& msg){
 
     // Publish
     poseStampedPublisher_->publish(pose_msg);
-    std::cout<<"Pose: "<<t.x()<<t.y()<<t.z()<<std::endl;
+    // std::cout<<"Pose: "<<t.x()<<t.y()<<t.z()<<std::endl;
 
     last_time_img_ = img_timestamp.nanoseconds();
 

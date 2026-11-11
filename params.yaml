@@ -1,11 +1,12 @@
 mono_node_cpp:
   ros__parameters:
     node_name_arg: "orb_slam_3"
-    slam_type: "RGBD" # RGBD, STEREOE, IMU_STEREO, MONOCULAR, IMU_MONOCULAR
-    settings_file: "/home/ud/IISC/vo/ORB_SLAM3/Examples/RGB-D-Inertial/RealSense_D435i.yaml"
+    slam_type: "MONOCULAR" # RGBD, STEREOE, IMU_STEREO, MONOCULAR, IMU_MONOCULAR
+    #settings_file: "/home/ud/IISC/vo/ORB_SLAM3/Examples/RGB-D-Inertial/RealSense_D435i.yaml"
+    settings_file: "/home/ud/IISC/vo/ORB_SLAM3/Examples/Monocular/RealSense_D435i.yaml"
     voc_file_arg: "src/ros2_orb_slam3/orb_slam3/Vocabulary/ORBvoc.txt.bin"
 
-    cam_topic_name_left: "/camera/camera/infra1/image_rect_raw"
+    cam_topic_name_left: "/camera/camera/color/image_raw"
     cam_topic_name_right: "/camera/camera/infra2/image_rect_raw"
     imu_topic_name: "/camera/camera/imu"
     rgb_topic_name: "/camera/camera/color/image_raw"

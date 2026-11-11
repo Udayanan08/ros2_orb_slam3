@@ -1,3 +1,59 @@
+# Quick start: Monocular ORB-SLAM3 with a RealSense camera
+
+All settings are in [`params.yaml`](params.yaml). You don't need the Python driver node (`mono_driver_node.py`). The C++ node `mono_node_cpp` subscribes to the camera topic directly.
+
+### 1. Build
+
+```bash
+cd ~/IISC/forked_repos/orbslam_ros_ws
+colcon build --packages-select ros2_orb_slam3
+source install/setup.bash
+```
+
+### 2. Start the camera (terminal 1)
+
+```bash
+ros2 launch realsense2_camera rs_launch.py
+```
+
+### 3. Run ORB-SLAM3 (terminal 2)
+
+Run this from the **workspace root**, because `voc_file_arg` in `params.yaml` is a relative path:
+
+```bash
+cd ~/IISC/forked_repos/orbslam_ros_ws
+source install/setup.bash
+ros2 run ros2_orb_slam3 mono_node_cpp --ros-args --params-file src/ros2_orb_slam3/params.yaml
+```
+
+### 4. Check the output
+
+```bash
+ros2 topic echo /orb/pose      # geometry_msgs/PoseStamped, frame "map"
+```
+
+A Pangolin window shows the map. Monocular SLAM needs some **sideways (translational) camera motion** over a textured scene before it initializes. Rotating in place is not enough.
+
+### Key parameters in `params.yaml`
+
+| Parameter | Value for monocular |
+|---|---|
+| `slam_type` | `MONOCULAR` (or `IMU_MONOCULAR`, `STEREO`, `IMU_STEREO`, `RGBD`, `IMU_RGBD`) |
+| `cam_topic_name_left` | The **only** topic used in MONOCULAR mode. It must be a raw `sensor_msgs/Image` topic such as `/camera/camera/color/image_raw`, **not** `.../compressed`, which ROS drops without an error because the message type doesn't match. |
+| `settings_file` | ORB-SLAM3 camera yaml. Its intrinsics (`Camera1.fx/fy/cx/cy`), resolution and `Camera.RGB` must match the subscribed stream. Check them with `ros2 topic echo --once /camera/camera/color/camera_info`. |
+| `voc_file_arg` | Path to `ORBvoc.txt.bin`. Use the binary vocabulary, because `System.cc` loads it with `loadFromBinFile`. |
+
+The other topic parameters (`cam_topic_name_right`, `imu_topic_name`, `rgb_topic_name`, `depth_topic_name`) are used only by the stereo, IMU and RGB-D modes.
+
+### Troubleshooting: no mapping
+
+- `ros2 node info /mono_node_cpp` shows which topic the node is subscribed to. Then run `ros2 topic hz <topic>` to confirm that frames are arriving on it.
+- Check that the topic type is `sensor_msgs/msg/Image`, using `ros2 topic list -t`.
+
+---
+
+# Original README
+
 ![License](https://img.shields.io/badge/License-GPLv3-blue.svg)
 ![Build Status](https://img.shields.io/badge/Build-Passing-success.svg)
 ![ROS2](https://img.shields.io/badge/ROS2-Humble-blue.svg)

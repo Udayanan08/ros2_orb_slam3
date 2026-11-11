@@ -1,5 +1,19 @@
 # Quick start: Monocular ORB-SLAM3 with a RealSense camera
 
+> **Branches are platform-specific.** The repo includes prebuilt Thirdparty libraries (`orb_slam3/Thirdparty/g2o/lib`, `orb_slam3/Thirdparty/DBoW2/lib`), and they only work on one CPU architecture. Check out the branch that matches your machine (`uname -m`):
+>
+> | Branch | Architecture | Machine | Default config |
+> |---|---|---|---|
+> | `x86` | x86_64 | Desktop / laptop | `MONOCULAR`, RealSense color stream |
+> | `jetson` | aarch64 (ARM) | NVIDIA Jetson | `RGBD`, RealSense D435i |
+> | `main` | aarch64 (ARM) | Same as `jetson` (legacy, kept for now) | |
+>
+> ```bash
+> git clone -b x86 git@github.com:Udayanan08/ros2_orb_slam3.git      # or -b jetson
+> ```
+>
+> Don't merge one branch into the other. A merge overwrites the `.so` files with builds for the wrong architecture, and the package then fails to link. To share source changes (`src/`, `orb_slam3/src/`, `include/`) between branches, use `git cherry-pick` on commits that don't touch `Thirdparty/*/lib`. `params.yaml` also holds machine-specific absolute paths (`settings_file`), so check it after a cherry-pick.
+
 All settings are in [`params.yaml`](params.yaml). You don't need the Python driver node (`mono_driver_node.py`). The C++ node `mono_node_cpp` subscribes to the camera topic directly.
 
 ### 1. Build
